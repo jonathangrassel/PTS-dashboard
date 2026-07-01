@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PTS — Scoping Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#1F3864;--gold:#C9A84C;--blue:#2E75B6;--blue-lt:#EBF3FB;
+    --surface:#F7F8FA;--card:#FFFFFF;--border:#E4E6EC;
+    --text-primary:#0F1923;--text-secondary:#4A5568;--text-muted:#8A95A3;
+    --green:#1DA462;--green-bg:#E8F7EF;--red:#C0392B;--red-bg:#FDECEA;
+    --radius:10px;--shadow:0 1px 3px rgba(15,25,35,0.08),0 4px 12px rgba(15,25,35,0.04);
+  }
+  [data-theme="dark"] {
+    --surface:#141B26;--card:#1C2330;--border:#2A3545;
+    --text-primary:#E8EDF4;--text-secondary:#8A95A3;--text-muted:#4A5568;
+    --blue-lt:#1a2535;--green-bg:#0D2D1F;--red-bg:#2D0D0A;
+    --shadow:0 1px 3px rgba(0,0,0,0.3),0 4px 12px rgba(0,0,0,0.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--surface);color:var(--text-primary);font-size:14px;line-height:1.5;}
+
+  /* LAYOUT */
+  .app{display:grid;grid-template-columns:320px 1fr;height:100vh;overflow:hidden;}
+
+  /* LEFT PANEL — CHAT */
+  .chat-panel{display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--card);}
+  .chat-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .chat-header-left{display:flex;align-items:center;gap:10px;}
+  .chat-logo{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--gold);font-weight:700;font-size:13px;flex-shrink:0;}
+  [data-theme="dark"] .chat-logo{background:#0F1923;}
+  .chat-title{font-size:14px;font-weight:600;color:var(--text-primary);}
+  .chat-sub{font-size:11px;color:var(--text-muted);}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+  .msg{max-width:90%;display:flex;flex-direction:column;gap:3px;}
+  .msg.assistant{align-self:flex-start;}
+  .msg.user{align-self:flex-end;}
+  .msg-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.55;}
+  .msg.assistant .msg-bubble{background:var(--surface);border:1px solid var(--border);color:var(--text-primary);border-bottom-left-radius:4px;}
+  .msg.user .msg-bubble{background:var(--navy);color:#fff;border-bottom-right-radius:4px;}
+  [data-theme="dark"] .msg.user .msg-bubble{background:var(--blue);}
+  .msg-time{font-size:10px;color:var(--text-muted);}
+  .msg.user .msg-time{text-align:right;}
+  .typing{display:flex;align-items:center;gap:4px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;border-bottom-left-radius:4px;width:56px;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:bounce 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:0.2s;}
+  .typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+  .chat-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;}
+  .chat-input{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text-primary);font-family:inherit;outline:none;resize:none;height:40px;transition:border 0.15s;}
+  .chat-input:focus{border-color:var(--blue);}
+  .send-btn{padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;}
+  [data-theme="dark"] .send-btn{background:var(--blue);}
+  .send-btn:hover{opacity:0.85;}
+  .send-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  /* RIGHT PANEL — SCOPE SUMMARY */
+  .scope-panel{display:flex;flex-direction:column;overflow-y:auto;}
+  .scope-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:10;}
+  .scope-header h2{font-size:16px;font-weight:600;}
+  .scope-header-actions{display:flex;gap:8px;align-items:center;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  [data-theme="dark"] .btn-primary{background:var(--blue);}
+  .btn-primary:hover{opacity:0.88;}
+  .btn-secondary{background:var(--card);color:var(--text-primary);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--blue-lt);}
+  .btn-gold{background:var(--gold);color:#fff;}
+  .btn-gold:hover{opacity:0.88;}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-icon{padding:7px;border-radius:7px;background:var(--card);border:1px solid var(--border);cursor:pointer;color:var(--text-secondary);font-size:14px;}
+
+  .scope-body{padding:24px;flex:1;}
+  .empty-scope{text-align:center;padding:64px 24px;color:var(--text-muted);}
+  .empty-scope .icon{font-size:40px;margin-bottom:16px;}
+  .empty-scope h3{font-size:15px;font-weight:500;color:var(--text-secondary);margin-bottom:8px;}
+  .empty-scope p{font-size:13px;line-height:1.6;}
+
+  /* SCOPE CARD */
+  .scope-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow);overflow:hidden;}
+  .scope-card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .scope-card-title{font-size:13px;font-weight:600;color:var(--text-primary);}
+  .scope-card-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;}
+  .badge-draft{background:var(--blue-lt);color:var(--blue);}
+  .badge-ready{background:var(--green-bg);color:var(--green);}
+  .scope-card-body{padding:16px 18px;}
+  .scope-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .scope-field{display:flex;flex-direction:column;gap:3px;}
+  .scope-field.full{grid-column:1/-1;}
+  .scope-field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);}
+  .scope-field .val{font-size:13px;color:var(--text-primary);}
+  .scope-field .val.mono{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .scope-field .val.big{font-size:22px;font-weight:600;color:var(--navy);}
+  [data-theme="dark"] .scope-field .val.big{color:var(--gold);}
+  .scope-field input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-primary);font-family:inherit;outline:none;transition:border 0.15s;width:100%;}
+  .scope-field input:focus{border-color:var(--blue);}
+
+  .pricing-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+  .pricing-row:last-child{border-bottom:none;}
+  .pricing-row .label{font-size:13px;color:var(--text-secondary);}
+  .pricing-row .amount{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--text-primary);}
+  .pricing-row.total .label{font-weight:600;color:var(--text-primary);}
+  .pricing-row.total .amount{font-size:16px;font-weight:600;color:var(--navy);}
+  [data-theme="dark"] .pricing-row.total .amount{color:var(--gold);}
+
+  .module-tag{display:inline-flex;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;background:var(--blue-lt);color:var(--blue);margin:2px;}
+
+  /* SF PUSH SECTION */
+  .sf-push-section{background:var(--green-bg);border:1px solid #9FE1CB;border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  [data-theme="dark"] .sf-push-section{background:#0D2D1F;border-color:#1D9E75;}
+  .sf-push-section h3{font-size:13px;font-weight:600;color:var(--green);margin-bottom:8px;}
+  .sf-push-section p{font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6;}
+  .sf-push-items{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .sf-push-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);}
+  .sf-push-item .check{width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;}
+
+  /* CONFIG PANEL */
+  .config-section{background:var(--blue-lt);border-radius:8px;padding:14px;margin-bottom:16px;}
+  [data-theme="dark"] .config-section{background:#1a2535;}
+  .config-section p{font-size:12px;color:var(--text-secondary);line-height:1.6;}
+  .form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+  .form-group label{font-size:11px;font-weight:600;color:var(--text-secondary);}
+  .form-group input{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-primary);font-family:inherit;outline:none;}
+  .form-group input:focus{border-color:var(--blue);}
+
+  /* TOAST */
+  .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px 15px;font-size:13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;animation:slideIn 0.2s ease;max-width:300px;}
+  .toast.success{border-left:3px solid var(--green);}
+  .toast.error{border-left:3px solid var(--red);}
+  .toast.info{border-left:3px solid var(--blue);}
+  @keyframes slideIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* TABS */
+  .tab-row{display:flex;border-bottom:1px solid var(--border);padding:0 24px;background:var(--surface);}
+  .tab{padding:11px 16px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;margin-bottom:-1px;}
+  .tab:hover{color:var(--text-primary);}
+  .tab.active{color:var(--navy);border-bottom-color:var(--navy);}
+  [data-theme="dark"] .tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  .tab-content{display:none;padding:24px;}
+  .tab-content.active{display:block;}
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="app">
+  <!-- ══ LEFT: CHAT ══ -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-logo">PTS</div>
+        <div>
+          <div class="chat-title">Scoping Assistant</div>
+          <div class="chat-sub">Powered by Claude</div>
+        </div>
+      </div>
+      <button class="btn-icon" onclick="toggleTheme()">◐</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chatInput" placeholder="Describe the prospect..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: SCOPE SUMMARY ══ -->
+  <div class="scope-panel">
+    <div class="scope-header">
+      <h2 id="scopeTitle">New Scope</h2>
+      <div class="scope-header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="resetScope()">↺ Reset</button>
+        <button class="btn btn-secondary btn-sm" onclick="showTab('settings')">⚙ SF Settings</button>
+        <button class="btn btn-gold" id="pushBtn" onclick="pushToSalesforce()" disabled>↑ Create in Salesforce</button>
+      </div>
+    </div>
+
+    <div class="tab-row">
+      <div class="tab active" id="tab-scope" onclick="showTab('scope')">Scope Summary</div>
+      <div class="tab" id="tab-pricing" onclick="showTab('pricing')">Pricing</div>
+      <div class="tab" id="tab-settings" onclick="showTab('settings')">SF Settings</div>
+    </div>
+
+    <!-- SCOPE TAB -->
+    <div class="tab-content active" id="content-scope">
+      <div id="emptyScopeState">
+        <div class="empty-scope">
+          <div class="icon">💬</div>
+          <h3>Start the conversation</h3>
+          <p>Tell me about the prospect — company name, size, what systems they're replacing, and what they need from Dayforce. I'll ask follow-up questions and build the scope summary here in real time.</p>
+        </div>
+      </div>
+      <div id="scopeSummaryContent" style="display:none">
+        <div class="scope-card">
+          <div class="scope-card-header">
+            <div class="scope-card-title">Client Overview</div>
+            <div class="scope-card-badge badge-draft" id="scopeStatusBadge">In Progress</div>
+          </div>
+          <div class="scope-card-body">
+            <div class="scope-field-grid">
+              <div class="scope-field full"><label>Client Name</label><div class="val" id="s_name">—</div></div>
+              <div class="scope-field"><label>Employees</label><div class="val" id="s_employees">—</div></div>
+              <div class="scope-field"><label>Locations</label><div class="val" id="s_locations">—</div></div>
+              <div class="scope-field"><label>States</label><div class="val" id="s_states">—</div></div>
+              <div class="scope-field"><label>Industry</label><div class="val" id="s_industry">—</div></div>
+              <div class="scope-field"><label>Current System</label><div class="val" id="s_current">—</div></div>
+              <div class="scope-field"><label>Go-Live Target</label><div class="val" id="s_golive">—</div></div>
+              <div class="scope-field"><label>Primary Contact</label><div class="val" id="s_contact">—</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-card-header"><div class="scope-card-title">Modules in Scope</div></div>
+          <div class="scope-card-body"><div id="s_modules">—</div></div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-card-header"><div class="scope-card-title">Complexity Notes</div></div>
+          <div class="scope-card-body"><div class="val" id="s_complexity" style="font-size:13px;line-height:1.65;color:var(--text-secondary);">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRICING TAB -->
+    <div class="tab-content" id="content-pricing">
+      <div id="emptyPricingState">
+        <div class="empty-scope">
+          <div class="icon">💰</div>
+          <h3>Pricing will appear here</h3>
+          <p>Once I have enough scope detail, I'll estimate hours using PTS methodology and calculate T&M pricing at the confirmed bill rate.</p>
+        </div>
+      </div>
+      <div id="pricingSummaryContent" style="display:none">
+        <div class="scope-card">
+          <div class="scope-card-header"><div class="scope-card-title">Estimated Investment</div></div>
+          <div class="scope-card-body">
+            <div style="margin-bottom:16px;">
+              <div class="scope-field"><label>Total Estimated Hours</label><div class="val big mono" id="p_hours">—</div></div>
+            </div>
+            <div id="pricingBreakdown"></div>
+            <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--border);">
+              <div class="pricing-row total">
+                <span class="label">Total Estimated Investment</span>
+                <span class="amount" id="p_total">—</span>
+              </div>
+              <div class="pricing-row">
+                <span class="label">Bill Rate</span>
+                <span class="amount" id="p_rate">$135/hr T&M</span>
+              </div>
+              <div class="pricing-row">
+                <span class="label">Validity</span>
+                <span class="amount">90 days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scope-card">
+          <div class="scope-card-header"><div class="scope-card-title">Discovery Items</div></div>
+          <div class="scope-card-body"><div id="p_discovery" style="font-size:13px;line-height:1.7;color:var(--text-secondary);"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-content" id="content-settings">
+      <div class="config-section">
+        <p>Enter your Salesforce credentials from the <strong>PTS Dashboard Integration</strong> Connected App. Stored in your browser only.</p>
+      </div>
+      <div class="form-group">
+        <label>Salesforce Instance URL</label>
+        <input type="text" id="cfg_url" placeholder="https://computing-momentum-7029.my.salesforce.com">
+      </div>
+      <div class="form-group">
+        <label>Consumer Key</label>
+        <input type="text" id="cfg_key" placeholder="3MVG9j...">
+      </div>
+      <div class="form-group">
+        <label>Consumer Secret</label>
+        <input type="password" id="cfg_secret" placeholder="54DB74...">
+      </div>
+      <div class="form-group">
+        <label>Salesforce Username</label>
+        <input type="text" id="cfg_user" placeholder="jonathan.grassel@theptsteam.com">
+      </div>
+      <div class="form-group">
+        <label>Password + Security Token (no space)</label>
+        <input type="password" id="cfg_pass" placeholder="PasswordSecurityToken">
+      </div>
+      <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">Save Credentials</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════
+function getCfg() {
+  return {
+    url: localStorage.getItem('sf_instance_url')||'',
+    key: localStorage.getItem('sf_client_id')||'',
+    secret: localStorage.getItem('sf_client_secret')||'',
+    user: localStorage.getItem('sf_username')||'',
+    pass: localStorage.getItem('sf_password')||'',
+    token: sessionStorage.getItem('sf_access_token')||'',
+  };
+}
+function saveConfig() {
+  localStorage.setItem('sf_instance_url', document.getElementById('cfg_url').value.trim().replace(/\/$/,''));
+  localStorage.setItem('sf_client_id', document.getElementById('cfg_key').value.trim());
+  localStorage.setItem('sf_client_secret', document.getElementById('cfg_secret').value.trim());
+  localStorage.setItem('sf_username', document.getElementById('cfg_user').value.trim());
+  localStorage.setItem('sf_password', document.getElementById('cfg_pass').value.trim());
+  sessionStorage.removeItem('sf_access_token');
+  toast('Salesforce credentials saved', 'success');
+  showTab('scope');
+}
+function loadConfigFields() {
+  const c = getCfg();
+  document.getElementById('cfg_url').value = c.url;
+  document.getElementById('cfg_key').value = c.key;
+  document.getElementById('cfg_user').value = c.user;
+}
+
+// ══════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('content-'+t).classList.add('active');
+  if (t==='settings') loadConfigFields();
+}
+
+// ══════════════════════════════════════════════════
+// SCOPE STATE
+// ══════════════════════════════════════════════════
+let scopeData = {};
+let conversationHistory = [];
+let scopeReady = false;
+
+const SYSTEM_PROMPT = `You are a Dayforce HCM implementation scoping assistant for Providence Technology Solutions (PTS), a Dayforce Capital Partner. You are helping Jonathan Grassel (jonathan.grassel@theptsteam.com) scope a new client engagement.
+
+Your job is to ask the right questions to gather scoping information, then estimate implementation hours and pricing using PTS methodology.
+
+PTS SCOPING METHODOLOGY:
+- Bill rate: $135/hr (standard), $125/hr (select engagements)
+- Scoping percentile: 22.22% (8/36 of onboarding range)
+- 15% staffing reduction across roles (50% for Solution Oversight)
+- Engagements are T&M, Net 30 milestone billing, 90-day validity
+- Change Management is always a separate optional add-on
+
+HOUR RANGES BY MODULE (use 22.22nd percentile = ~lower third):
+- Core HR / Platform: 120-280 hrs
+- Payroll (single entity): 200-480 hrs → add 80-120 hrs per additional entity
+- Time & Attendance (basic): 160-320 hrs
+- Benefits Administration: 120-280 hrs → +15 hrs per benefit plan above 10
+- Recruiting (ATS): 80-180 hrs
+- Onboarding: 60-140 hrs
+- Advanced Scheduling: 200-480 hrs
+- Performance Management: 80-160 hrs
+- Compensation Management: 80-160 hrs
+- Career Explorer / Succession: 60-120 hrs each
+- Integrations: 40-80 hrs each (standard); 80-160 hrs (complex/custom)
+- Data Migration: 120-200 hrs (3 cycles standard)
+- People Analytics: 40-80 hrs
+- Change Management (optional): 280-360 hrs
+- Project Management: 15% of total implementation hours
+- Solution Oversight: 50% of PM hours (after 50% reduction)
+
+COMPLEXITY MULTIPLIERS:
+- Canadian payroll (incl. Quebec): +25% on payroll hours
+- Multi-entity (2-5 entities): +20% on payroll hours per additional entity
+- >50 locations: +15% on WFM hours
+- >10,000 employees: +10% overall
+- Legacy system complexity (SAP, Oracle, custom): +10-15% on data migration
+
+KEY QUESTIONS TO ASK (gather these naturally, not as a list):
+1. Company name and industry
+2. Employee count and location count / states
+3. Current HCM system being replaced
+4. Which Dayforce modules they want (confirm don't assume)
+5. Number of legal entities / EINs
+6. Benefit plan count (if Benefits in scope)
+7. Number of integrations needed
+8. Canadian operations or Quebec payroll?
+9. Target go-live date
+10. Primary contact name and title
+
+CONVERSATION STYLE:
+- Ask 1-2 questions at a time, not a big list
+- Be conversational and professional
+- Once you have enough info (at least: name, employees, modules, go-live), generate the scope summary
+- When you have enough info, end your message with a JSON block like this (ALWAYS use this exact format):
+
+SCOPE_DATA:{"name":"Client Name","employees":5000,"locations":20,"states":"TX, CA, FL","industry":"Retail","current_system":"ADP Workforce Now","golive":"Q2 2027","contact":"Jane Smith, VP HR","modules":["Core HR","Payroll","Time & Attendance","Benefits"],"integrations":3,"entities":1,"benefit_plans":12,"canadian":false,"complexity":"Multi-state payroll with 3 custom integrations","hours_breakdown":{"core_hr":180,"payroll":280,"time_attendance":220,"benefits":180,"integrations":120,"data_migration":160,"project_management":140,"solution_oversight":70},"total_hours":1350,"bill_rate":135,"total_amount":182250,"discovery_items":["Confirm benefit plan inventory","401(k) vendor TBD","GL export ERP system"]}
+
+Only include the SCOPE_DATA block when you have enough information to generate a complete estimate. Keep gathering info if you're missing key fields. After generating the scope, you can continue refining — if the user adds more info, update the SCOPE_DATA block with revised numbers.`;
+
+// ══════════════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════════════
+function addMessage(role, text, skipHistory) {
+  const wrap = document.getElementById('chatMessages');
+  const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const el = document.createElement('div');
+  el.className = `msg ${role}`;
+
+  // Strip SCOPE_DATA block from display
+  const display = text.replace(/SCOPE_DATA:\{[\s\S]*?\}(?=\s*$|\n)/m, '').trim();
+
+  el.innerHTML = `<div class="msg-bubble">${display.replace(/\n/g,'<br>')}</div><div class="msg-time">${time}</div>`;
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  if (!skipHistory) conversationHistory.push({role, content: text});
+
+  // Parse SCOPE_DATA if present
+  const match = text.match(/SCOPE_DATA:(\{[\s\S]*?\})(?=\s*$|\n)/m);
+  if (match) {
+    try {
+      const data = JSON.parse(match[1]);
+      updateScopeUI(data);
+    } catch(e) { console.warn('SCOPE_DATA parse error', e); }
+  }
+}
+
+function showTyping() {
+  const wrap = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg assistant';
+  el.id = 'typingIndicator';
+  el.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage('user', text);
+  input.value = '';
+  btn.disabled = true;
+  showTyping();
+
+  try {
+    const messages = conversationHistory.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content
+    }));
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages,
+      })
+    });
+    const data = await res.json();
+    hideTyping();
+
+    if (data.content?.[0]?.text) {
+      addMessage('assistant', data.content[0].text);
+    } else {
+      addMessage('assistant', 'Sorry, I had trouble responding. Please try again.');
+    }
+  } catch(e) {
+    hideTyping();
+    addMessage('assistant', 'Connection error. Please check your network and try again.');
+  }
+  btn.disabled = false;
+  input.focus();
+}
+
+// ══════════════════════════════════════════════════
+// SCOPE UI UPDATE
+// ══════════════════════════════════════════════════
+function updateScopeUI(data) {
+  scopeData = data;
+  document.getElementById('emptyScopeState').style.display = 'none';
+  document.getElementById('scopeSummaryContent').style.display = 'block';
+  document.getElementById('scopeTitle').textContent = data.name || 'New Scope';
+
+  // Overview fields
+  setText('s_name', data.name);
+  setText('s_employees', data.employees ? Number(data.employees).toLocaleString() : '—');
+  setText('s_locations', data.locations || '—');
+  setText('s_states', data.states || '—');
+  setText('s_industry', data.industry || '—');
+  setText('s_current', data.current_system || '—');
+  setText('s_golive', data.golive || '—');
+  setText('s_contact', data.contact || '—');
+  setText('s_complexity', data.complexity || '—');
+
+  // Modules
+  const modEl = document.getElementById('s_modules');
+  if (data.modules?.length) {
+    modEl.innerHTML = data.modules.map(m=>`<span class="module-tag">${m}</span>`).join('');
+  }
+
+  // Pricing
+  if (data.total_hours && data.total_amount) {
+    document.getElementById('emptyPricingState').style.display = 'none';
+    document.getElementById('pricingSummaryContent').style.display = 'block';
+    setText('p_hours', Number(data.total_hours).toLocaleString()+' hrs');
+    setText('p_total', '$'+Number(data.total_amount).toLocaleString());
+    setText('p_rate', `$${data.bill_rate||135}/hr T&M`);
+
+    // Breakdown
+    const bd = data.hours_breakdown || {};
+    const labels = {
+      core_hr:'Core HR / Platform', payroll:'Payroll', time_attendance:'Time & Attendance',
+      benefits:'Benefits Administration', recruiting:'Recruiting', onboarding:'Onboarding',
+      advanced_scheduling:'Advanced Scheduling', performance:'Performance Management',
+      compensation:'Compensation Management', career_explorer:'Career Explorer',
+      succession:'Succession Planning', integrations:'Integrations',
+      data_migration:'Data Migration', people_analytics:'People Analytics',
+      project_management:'Project Management', solution_oversight:'Solution Oversight',
+      change_management:'Change Management (optional)'
+    };
+    const rate = data.bill_rate || 135;
+    document.getElementById('pricingBreakdown').innerHTML = Object.entries(bd)
+      .filter(([,v])=>v>0)
+      .map(([k,v])=>`<div class="pricing-row">
+        <span class="label">${labels[k]||k}</span>
+        <span class="amount">${v} hrs · $${(v*rate).toLocaleString()}</span>
+      </div>`).join('');
+
+    // Discovery items
+    if (data.discovery_items?.length) {
+      document.getElementById('p_discovery').innerHTML = data.discovery_items
+        .map(d=>`<div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:var(--gold);flex-shrink:0;">•</span><span>${d}</span></div>`)
+        .join('');
+    }
+  }
+
+  // Enable push button
+  scopeReady = true;
+  document.getElementById('pushBtn').disabled = false;
+  document.getElementById('scopeStatusBadge').textContent = 'Ready';
+  document.getElementById('scopeStatusBadge').className = 'scope-card-badge badge-ready';
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || '—';
+}
+
+// ══════════════════════════════════════════════════
+// SALESFORCE AUTH
+// ══════════════════════════════════════════════════
+async function getSfToken() {
+  const c = getCfg();
+  if (!c.url || !c.key || !c.secret || !c.user || !c.pass) {
+    showTab('settings');
+    throw new Error('Salesforce not configured — enter credentials in SF Settings');
+  }
+  if (c.token) return { token: c.token, instanceUrl: c.url };
+
+  const params = new URLSearchParams({
+    grant_type:'password', client_id:c.key, client_secret:c.secret,
+    username:c.user, password:c.pass,
+  });
+  const res = await fetch(`${c.url}/services/oauth2/token`, {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:params,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) throw new Error(data.error_description||'Salesforce auth failed');
+  sessionStorage.setItem('sf_access_token', data.access_token);
+  return { token:data.access_token, instanceUrl:data.instance_url||c.url };
+}
+
+// ══════════════════════════════════════════════════
+// PUSH TO SALESFORCE
+// ══════════════════════════════════════════════════
+async function pushToSalesforce() {
+  if (!scopeReady || !scopeData.name) { toast('Complete the scope first', 'error'); return; }
+
+  const btn = document.getElementById('pushBtn');
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+  btn.disabled = true;
+
+  try {
+    const { token, instanceUrl } = await getSfToken();
+    const headers = { Authorization:`Bearer ${token}`, 'Content-Type':'application/json' };
+
+    // 1. Find or create Account
+    let accountId = null;
+    const acctSearch = await fetch(
+      `${instanceUrl}/services/data/v59.0/query?q=${encodeURIComponent(`SELECT Id FROM Account WHERE Name = '${scopeData.name.replace(/'/g,"\\'")}' LIMIT 1`)}`,
+      { headers }
+    );
+    const acctData = await acctSearch.json();
+    if (acctData.records?.length) {
+      accountId = acctData.records[0].Id;
+      toast('Existing account found in Salesforce', 'info');
+    } else {
+      const newAcct = await fetch(`${instanceUrl}/services/data/v59.0/sobjects/Account`, {
+        method:'POST', headers,
+        body: JSON.stringify({
+          Name: scopeData.name,
+          Type: 'Prospect',
+          LeadSource: 'Partner',
+          Industry: scopeData.industry || '',
+          NumberOfEmployees: scopeData.employees || 0,
+          Description: `Locations: ${scopeData.locations||'—'} | States: ${scopeData.states||'—'} | Current System: ${scopeData.current_system||'—'}`,
+        }),
+      });
+      const acctJson = await newAcct.json();
+      if (!acctJson.id) throw new Error('Failed to create Account: '+(acctJson[0]?.message||'Unknown error'));
+      accountId = acctJson.id;
+      toast('New Account created in Salesforce', 'success');
+    }
+
+    // 2. Create Opportunity
+    const closeDate = new Date(); closeDate.setMonth(closeDate.getMonth()+3);
+    const oppName = `${scopeData.name} - $${Number(scopeData.total_amount||0).toLocaleString()} - ${closeDate.toISOString().split('T')[0]}`;
+    const newOpp = await fetch(`${instanceUrl}/services/data/v59.0/sobjects/Opportunity`, {
+      method:'POST', headers,
+      body: JSON.stringify({
+        Name: oppName,
+        AccountId: accountId,
+        Amount: scopeData.total_amount || 0,
+        StageName: 'Meet & Present',
+        CloseDate: closeDate.toISOString().split('T')[0],
+        LeadSource: 'Partner',
+        Type: 'New Business',
+        of_Hours__c: String(scopeData.total_hours||''),
+        Description: [
+          `Employees: ${scopeData.employees||'—'}`,
+          `Locations: ${scopeData.locations||'—'}`,
+          `States: ${scopeData.states||'—'}`,
+          `Modules: ${(scopeData.modules||[]).join(', ')}`,
+          `Go-Live Target: ${scopeData.golive||'—'}`,
+          `Bill Rate: $${scopeData.bill_rate||135}/hr T&M`,
+          `Current System: ${scopeData.current_system||'—'}`,
+          `Complexity: ${scopeData.complexity||'—'}`,
+          `Contact: ${scopeData.contact||'—'}`,
+          `Scoped by: Jonathan Grassel — jonathan.grassel@theptsteam.com`,
+        ].join('\n'),
+      }),
+    });
+    const oppJson = await newOpp.json();
+    if (!oppJson.id) throw new Error('Failed to create Opportunity: '+(oppJson[0]?.message||'Unknown error'));
+    const oppId = oppJson.id;
+
+    // 3. Create Activity / Task with full scope notes
+    const taskBody = [
+      `=== PTS SCOPING NOTES ===`,
+      `Scoped by: Jonathan Grassel (jonathan.grassel@theptsteam.com)`,
+      `Date: ${new Date().toLocaleDateString()}`,
+      ``,
+      `CLIENT: ${scopeData.name}`,
+      `Employees: ${scopeData.employees||'—'} | Locations: ${scopeData.locations||'—'} | States: ${scopeData.states||'—'}`,
+      `Industry: ${scopeData.industry||'—'} | Current System: ${scopeData.current_system||'—'}`,
+      `Target Go-Live: ${scopeData.golive||'—'}`,
+      `Primary Contact: ${scopeData.contact||'—'}`,
+      ``,
+      `MODULES IN SCOPE:`,
+      (scopeData.modules||[]).map(m=>`  • ${m}`).join('\n'),
+      ``,
+      `HOUR ESTIMATE BREAKDOWN:`,
+      ...Object.entries(scopeData.hours_breakdown||{}).filter(([,v])=>v>0).map(([k,v])=>`  ${k.replace(/_/g,' ')}: ${v} hrs`),
+      ``,
+      `TOTAL: ${scopeData.total_hours||0} hrs @ $${scopeData.bill_rate||135}/hr = $${Number(scopeData.total_amount||0).toLocaleString()}`,
+      ``,
+      `COMPLEXITY NOTES:`,
+      scopeData.complexity||'—',
+      ``,
+      `DISCOVERY ITEMS:`,
+      (scopeData.discovery_items||[]).map(d=>`  • ${d}`).join('\n'),
+    ].join('\n');
+
+    await fetch(`${instanceUrl}/services/data/v59.0/sobjects/Task`, {
+      method:'POST', headers,
+      body: JSON.stringify({
+        WhatId: oppId,
+        Subject: `PTS Scoping Notes — ${scopeData.name}`,
+        Description: taskBody,
+        Status: 'Completed',
+        Priority: 'High',
+        ActivityDate: new Date().toISOString().split('T')[0],
+      }),
+    });
+
+    // SUCCESS
+    toast(`✓ Account, Opportunity & Activity created in Salesforce!`, 'success');
+    btn.innerHTML = `✓ Created in Salesforce`;
+    btn.style.background = 'var(--green)';
+
+    // Add link message to chat
+    addMessage('assistant', `✅ Done! I've created the following in Salesforce:\n\n• **Account**: ${scopeData.name}\n• **Opportunity**: ${oppName}\n• **Activity**: Full scoping notes attached\n\nOpportunity ID: ${oppId}\n\nYou can open it directly in Salesforce to assign to John Strang and advance the stage.`, true);
+
+    // Show open link
+    const c = getCfg();
+    if (c.url) {
+      setTimeout(()=> window.open(`${c.url}/lightning/r/Opportunity/${oppId}/view`, '_blank'), 1000);
+    }
+
+  } catch(e) {
+    toast(`Error: ${e.message}`, 'error');
+    btn.innerHTML = '↑ Create in Salesforce';
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// RESET
+// ══════════════════════════════════════════════════
+function resetScope() {
+  if (!confirm('Reset this scoping session? The conversation will be cleared.')) return;
+  scopeData = {};
+  scopeReady = false;
+  conversationHistory = [];
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('emptyScopeState').style.display = 'block';
+  document.getElementById('scopeSummaryContent').style.display = 'none';
+  document.getElementById('emptyPricingState').style.display = 'block';
+  document.getElementById('pricingSummaryContent').style.display = 'none';
+  document.getElementById('scopeTitle').textContent = 'New Scope';
+  document.getElementById('pushBtn').disabled = true;
+  document.getElementById('pushBtn').innerHTML = '↑ Create in Salesforce';
+  document.getElementById('pushBtn').style.background = '';
+  document.getElementById('scopeStatusBadge').textContent = 'In Progress';
+  document.getElementById('scopeStatusBadge').className = 'scope-card-badge badge-draft';
+  showTab('scope');
+  startConversation();
+}
+
+function toggleTheme() {
+  const d = document.documentElement;
+  d.setAttribute('data-theme', d.getAttribute('data-theme')==='dark' ? '' : 'dark');
+}
+
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 4500);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+function startConversation() {
+  const greeting = `Hi Jonathan! I'm ready to scope a new Dayforce engagement for PTS.\n\nTo get started — who's the prospect, and what's their situation? (Company name, rough employee count, and what they're trying to solve are great starting points.)`;
+  addMessage('assistant', greeting, true);
+  conversationHistory = [{role:'assistant', content:greeting}];
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadConfigFields();
+  startConversation();
+});
+</script>
+</body>
+</html>
