@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PTS — Project Portfolio Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --navy:#1F3864;--gold:#C9A84C;--gold-lt:#F0DFA0;--blue:#2E75B6;--blue-lt:#EBF3FB;
+    --white:#FFFFFF;--surface:#F7F8FA;--card:#FFFFFF;--border:#E4E6EC;
+    --text-primary:#0F1923;--text-secondary:#4A5568;--text-muted:#8A95A3;
+    --green:#1DA462;--green-bg:#E8F7EF;--amber:#C47F0A;--amber-bg:#FEF3DC;
+    --red:#C0392B;--red-bg:#FDECEA;--radius:10px;
+    --shadow:0 1px 3px rgba(15,25,35,0.08),0 4px 12px rgba(15,25,35,0.04);
+  }
+  [data-theme="dark"] {
+    --navy:#A8C4E8;--blue:#5B9BD5;--blue-lt:#1A2A3A;--white:#1C2330;
+    --surface:#141B26;--card:#1C2330;--border:#2A3545;
+    --text-primary:#E8EDF4;--text-secondary:#8A95A3;--text-muted:#4A5568;
+    --green:#2ECC71;--green-bg:#0D2D1F;--amber:#F0A500;--amber-bg:#2D2000;
+    --red:#E74C3C;--red-bg:#2D0D0A;
+    --shadow:0 1px 3px rgba(0,0,0,0.3),0 4px 12px rgba(0,0,0,0.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--surface);color:var(--text-primary);font-size:14px;line-height:1.5;transition:background 0.2s,color 0.2s;}
+
+  /* LAYOUT */
+  .app{display:flex;min-height:100vh;}
+  .sidebar{width:220px;background:var(--navy);flex-shrink:0;display:flex;flex-direction:column;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  [data-theme="dark"] .sidebar{background:#0F1923;border-right:1px solid var(--border);}
+  .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1);}
+  .sidebar-logo .wordmark{font-size:13px;font-weight:600;color:#fff;letter-spacing:0.05em;opacity:0.9;}
+  .sidebar-logo .sub{font-size:11px;color:var(--gold);margin-top:2px;opacity:0.8;}
+  .sidebar-nav{padding:16px 0;flex:1;}
+  .nav-label{font-size:10px;font-weight:600;letter-spacing:0.08em;color:rgba(255,255,255,0.35);padding:12px 20px 6px;text-transform:uppercase;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;}
+  .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+  .nav-item.active{background:rgba(201,168,76,0.15);color:var(--gold);border-left-color:var(--gold);}
+  .nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);}
+  .sf-status{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.5);}
+  .sf-dot{width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;transition:background 0.3s;}
+  .sf-dot.connected{background:var(--green);box-shadow:0 0 6px rgba(29,164,98,0.5);}
+  .sf-dot.error{background:var(--red);}
+
+  .main{flex:1;overflow:auto;padding:28px 32px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+  .topbar-left h1{font-size:20px;font-weight:600;color:var(--text-primary);}
+  .topbar-left p{font-size:13px;color:var(--text-secondary);margin-top:2px;}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  [data-theme="dark"] .btn-primary{background:var(--blue);}
+  .btn-primary:hover{opacity:0.88;}
+  .btn-secondary{background:var(--card);color:var(--text-primary);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--blue-lt);}
+  .btn-gold{background:var(--gold);color:#fff;}
+  .btn-gold:hover{opacity:0.88;}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+  .btn-icon{padding:8px;border-radius:7px;background:var(--card);border:1px solid var(--border);cursor:pointer;color:var(--text-secondary);display:inline-flex;align-items:center;transition:all 0.15s;}
+  .btn-icon:hover{background:var(--blue-lt);color:var(--blue);}
+
+  /* KPI CARDS */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);}
+  .kpi-label{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .kpi-value{font-size:26px;font-weight:600;color:var(--text-primary);line-height:1;}
+  .kpi-sub{font-size:12px;color:var(--text-secondary);margin-top:5px;}
+  .kpi-accent{border-top:3px solid var(--gold);}
+
+  /* CHARTS ROW */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+  .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);}
+  .chart-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:16px;}
+  .chart-wrap{position:relative;height:180px;}
+
+  /* FILTER TABS */
+  .filter-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .filter-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text-secondary);transition:all 0.15s;}
+  .filter-tab:hover{border-color:var(--blue);color:var(--blue);}
+  .filter-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  [data-theme="dark"] .filter-tab.active{background:var(--blue);border-color:var(--blue);}
+
+  /* PROJECT CARDS */
+  .project-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow 0.15s;}
+  .project-card:hover{box-shadow:0 4px 16px rgba(15,25,35,0.12);}
+  .project-header{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;}
+  .proj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .proj-name{font-size:14px;font-weight:600;color:var(--text-primary);flex:1;}
+  .proj-meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-secondary);}
+  .proj-amount{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--text-primary);}
+  .status-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.03em;}
+  .badge-active{background:var(--green-bg);color:var(--green);}
+  .badge-proposal{background:var(--blue-lt);color:var(--blue);}
+  .badge-scoping{background:var(--amber-bg);color:var(--amber);}
+  .badge-closed{background:#f0f0f0;color:#888;}
+  [data-theme="dark"] .badge-closed{background:#222;color:#666;}
+  .chevron{font-size:16px;color:var(--text-muted);transition:transform 0.2s;user-select:none;}
+  .chevron.open{transform:rotate(180deg);}
+
+  .project-drawer{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
+  .project-drawer.open{display:block;}
+  .drawer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;margin-top:16px;}
+  .drawer-field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);display:block;margin-bottom:3px;}
+  .drawer-field span{font-size:13px;color:var(--text-primary);}
+  .drawer-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border);}
+
+  /* SF SYNC INDICATOR */
+  .sf-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border);}
+  .sf-badge .dot{width:6px;height:6px;border-radius:50%;background:#ccc;}
+  .sf-badge.synced .dot{background:var(--green);}
+  .sf-badge.pending .dot{background:var(--amber);}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--card);border-radius:14px;padding:28px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+  .modal h2{font-size:17px;font-weight:600;margin-bottom:20px;color:var(--text-primary);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-group.full{grid-column:1/-1;}
+  .form-group label{font-size:12px;font-weight:500;color:var(--text-secondary);}
+  .form-group input,.form-group select{padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text-primary);font-family:inherit;transition:border 0.15s;outline:none;}
+  .form-group input:focus,.form-group select:focus{border-color:var(--blue);}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+  .required{color:var(--red);}
+
+  /* SF CONFIG MODAL */
+  .config-section{background:var(--blue-lt);border-radius:8px;padding:14px;margin-bottom:16px;}
+  [data-theme="dark"] .config-section{background:#1a2535;}
+  .config-section p{font-size:12px;color:var(--text-secondary);line-height:1.6;}
+  .config-note{font-size:11px;color:var(--text-muted);margin-top:6px;}
+
+  /* TOAST */
+  .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.12);display:flex;align-items:center;gap:10px;animation:slideIn 0.2s ease;max-width:320px;}
+  .toast.success{border-left:3px solid var(--green);}
+  .toast.error{border-left:3px solid var(--red);}
+  .toast.info{border-left:3px solid var(--blue);}
+  @keyframes slideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  /* LOADING */
+  .loading-bar{height:3px;background:linear-gradient(90deg,var(--gold),var(--blue));border-radius:2px;animation:loadpulse 1.2s ease-in-out infinite;display:none;}
+  @keyframes loadpulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* EMPTY STATE */
+  .empty-state{text-align:center;padding:48px 24px;color:var(--text-muted);}
+  .empty-state .icon{font-size:32px;margin-bottom:12px;}
+  .empty-state p{font-size:13px;}
+
+  /* INLINE EDIT */
+  .edit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;margin-bottom:16px;}
+  .edit-field{display:flex;flex-direction:column;gap:4px;}
+  .edit-field.full{grid-column:1/-1;}
+  .edit-field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);}
+  .edit-field input,.edit-field select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-primary);font-family:inherit;outline:none;transition:border 0.15s;}
+  .edit-field input:focus,.edit-field select:focus{border-color:var(--blue);background:var(--card);}
+  .edit-actions{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);}
+  .edit-banner{background:var(--blue-lt);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--blue);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+  [data-theme="dark"] .edit-banner{background:#1a2535;}
+
+  /* UTIL */
+  .divider{height:1px;background:var(--border);margin:20px 0;}
+  .text-muted{color:var(--text-muted);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  @media print{.sidebar,.topbar-right,.drawer-actions,.modal-overlay,.toast-wrap{display:none!important;}.main{padding:0;}.project-drawer{display:block!important;}}
+</style>
+</head>
+<body>
+
+<!-- ══ SALESFORCE CONFIG MODAL ══ -->
+<div class="modal-overlay" id="sfConfigModal">
+  <div class="modal">
+    <h2>🔗 Connect to Salesforce</h2>
+    <div class="config-section">
+      <p>Enter your Salesforce Instance URL and Consumer Key from the <strong>PTS Dashboard Integration</strong> Connected App. Then click <strong>Login with Salesforce</strong> — a Salesforce login window will open and handle authentication securely.</p>
+      <p class="config-note">No password is stored. Salesforce handles login directly.</p>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Salesforce Instance URL</label>
+        <input type="text" id="sfInstanceUrl" placeholder="https://computing-momentum-7029.my.salesforce.com">
+      </div>
+      <div class="form-group full">
+        <label>Consumer Key (Client ID)</label>
+        <input type="text" id="sfClientId" placeholder="3MVG9j...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSfConfig()">Cancel</button>
+      <button class="btn btn-primary" onclick="startOAuthFlow()">Login with Salesforce ↗</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NEW ENGAGEMENT MODAL ══ -->
+<div class="modal-overlay" id="newEngModal">
+  <div class="modal">
+    <h2>New Engagement</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Client Name <span class="required">*</span></label>
+        <input type="text" id="f_name" placeholder="e.g. Acme Corp">
+      </div>
+      <div class="form-group">
+        <label>Employees</label>
+        <input type="number" id="f_employees" placeholder="e.g. 3500">
+      </div>
+      <div class="form-group">
+        <label>Locations</label>
+        <input type="text" id="f_locations" placeholder="e.g. 25">
+      </div>
+      <div class="form-group">
+        <label>Total Amount ($)</label>
+        <input type="number" id="f_amount" placeholder="e.g. 425000">
+      </div>
+      <div class="form-group">
+        <label># of Hours</label>
+        <input type="number" id="f_hours" placeholder="e.g. 3148">
+      </div>
+      <div class="form-group">
+        <label>Stage</label>
+        <select id="f_stage">
+          <option>Qualify</option>
+          <option selected>Meet &amp; Present</option>
+          <option>Propose</option>
+          <option>Negotiate</option>
+          <option>Closed Won</option>
+          <option>Closed Lost</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Close Date</label>
+        <input type="date" id="f_closedate">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f_status">
+          <option>Proposal</option>
+          <option>Scoping</option>
+          <option>Active</option>
+          <option>Closed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bill Rate ($/hr)</label>
+        <input type="number" id="f_rate" value="135">
+      </div>
+      <div class="form-group full">
+        <label>Modules (comma-separated)</label>
+        <input type="text" id="f_modules" placeholder="Core HCM, Payroll, Time &amp; Attendance">
+      </div>
+      <div class="form-group full">
+        <label>Go-Live Date</label>
+        <input type="text" id="f_golive" placeholder="e.g. January 1, 2027">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeNewEng()">Cancel</button>
+      <button class="btn btn-gold" id="saveEngBtn" onclick="saveEngagement()">
+        <span id="saveBtnText">Save &amp; Push to Salesforce</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST CONTAINER ══ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ══ APP ══ -->
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="wordmark">PROVIDENCE</div>
+      <div class="sub">Project Portfolio</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Views</div>
+      <div class="nav-item active" onclick="setView('all',this)">
+        <div class="nav-dot" style="background:var(--gold)"></div> All Projects
+      </div>
+      <div class="nav-item" onclick="setView('Active',this)">
+        <div class="nav-dot" style="background:var(--green)"></div> Active
+      </div>
+      <div class="nav-item" onclick="setView('Proposal',this)">
+        <div class="nav-dot" style="background:var(--blue)"></div> Proposals
+      </div>
+      <div class="nav-item" onclick="setView('Scoping',this)">
+        <div class="nav-dot" style="background:var(--amber)"></div> Scoping
+      </div>
+      <div class="nav-item" onclick="setView('Closed',this)">
+        <div class="nav-dot" style="background:#888"></div> Closed
+      </div>
+      <div class="nav-label">Actions</div>
+      <div class="nav-item" onclick="openScopingTool()">
+        <div class="nav-dot" style="background:var(--gold)"></div> 🎯 Scope New Client
+      </div>
+      <div class="nav-item" onclick="openNewEng()">
+        <div class="nav-dot" style="background:var(--gold)"></div> + New Engagement
+      </div>
+      <div class="nav-item" onclick="syncFromSalesforce()">
+        <div class="nav-dot" style="background:#5B9BD5"></div> ↻ Sync from Salesforce
+      </div>
+      <div class="nav-item" onclick="openSfConfig()">
+        <div class="nav-dot" style="background:#888"></div> ⚙ SF Settings
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sf-status">
+        <div class="sf-dot" id="sfDot"></div>
+        <span id="sfStatusLabel">Not connected</span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.3);">
+        Jonathan Grassel · jonathan.grassel@theptsteam.com
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="loading-bar" id="loadingBar"></div>
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 id="viewTitle">All Projects</h1>
+        <p id="viewSub">Last synced: <span id="lastSync">—</span></p>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-secondary btn-sm" onclick="syncFromSalesforce()">↻ Sync</button>
+        <button class="btn btn-secondary btn-sm" onclick="openSalesforceList()">Salesforce ↗</button>
+        <button class="btn btn-gold btn-sm" onclick="openNewEng()">+ New Engagement</button>
+        <button class="btn-icon" onclick="toggleTheme()" title="Toggle dark mode">◐</button>
+        <button class="btn-icon" onclick="window.print()" title="Print">⎙</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card kpi-accent">
+        <div class="kpi-label">Total Pipeline</div>
+        <div class="kpi-value" id="kpi-pipeline">—</div>
+        <div class="kpi-sub" id="kpi-pipeline-sub">active + proposal</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Engagements</div>
+        <div class="kpi-value" id="kpi-active">—</div>
+        <div class="kpi-sub">in implementation</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Proposals Out</div>
+        <div class="kpi-value" id="kpi-proposals">—</div>
+        <div class="kpi-sub">awaiting decision</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Employees</div>
+        <div class="kpi-value" id="kpi-employees">—</div>
+        <div class="kpi-sub">across pipeline</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Pipeline by Amount</div>
+        <div class="chart-wrap"><canvas id="pipelineChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Status Distribution</div>
+        <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- PROJECT LIST -->
+    <div class="filter-row" id="filterRow"></div>
+    <div id="projectList"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// SALESFORCE CONFIG
+// ══════════════════════════════════════════════════
+const SF_PROXY = null;
+
+function getSfConfig() {
+  return {
+    instanceUrl: localStorage.getItem('sf_instance_url') || '',
+    clientId: localStorage.getItem('sf_client_id') || '',
+    accessToken: sessionStorage.getItem('sf_access_token') || '',
+  };
+}
+
+function openSfConfig() {
+  const c = getSfConfig();
+  document.getElementById('sfInstanceUrl').value = c.instanceUrl;
+  document.getElementById('sfClientId').value = c.clientId;
+  document.getElementById('sfConfigModal').classList.add('open');
+}
+function closeSfConfig() { document.getElementById('sfConfigModal').classList.remove('open'); }
+
+function startOAuthFlow() {
+  const instanceUrl = document.getElementById('sfInstanceUrl').value.trim().replace(/\/$/,'');
+  const clientId = document.getElementById('sfClientId').value.trim();
+  if (!instanceUrl || !clientId) { toast('Enter Instance URL and Consumer Key first', 'error'); return; }
+
+  localStorage.setItem('sf_instance_url', instanceUrl);
+  localStorage.setItem('sf_client_id', clientId);
+
+  // Use current page as redirect — we'll catch the token on return
+  const redirectUri = encodeURIComponent(window.location.href.split('?')[0].split('#')[0]);
+  const authUrl = `${instanceUrl}/services/oauth2/authorize?response_type=token&client_id=${encodeURIComponent(clientId)}&redirect_uri=${redirectUri}`;
+  closeSfConfig();
+  // Open Salesforce login in a popup
+  const popup = window.open(authUrl, 'sf_login', 'width=600,height=700,left=200,top=100');
+  // Poll for token in popup URL hash
+  const poll = setInterval(() => {
+    try {
+      const hash = popup?.location?.hash;
+      if (hash && hash.includes('access_token')) {
+        clearInterval(poll);
+        popup.close();
+        const params = new URLSearchParams(hash.replace('#',''));
+        const token = params.get('access_token');
+        const retInstance = params.get('instance_url') || instanceUrl;
+        if (token) {
+          sessionStorage.setItem('sf_access_token', token);
+          localStorage.setItem('sf_instance_url', decodeURIComponent(retInstance));
+          setSfStatus('connected');
+          toast('Salesforce connected ✓', 'success');
+          syncFromSalesforce();
+        }
+      }
+    } catch(e) { /* cross-origin — still loading, keep polling */ }
+    if (popup?.closed) { clearInterval(poll); }
+  }, 500);
+}
+
+function saveSfConfig() { startOAuthFlow(); }
+
+// ══════════════════════════════════════════════════
+// SALESFORCE AUTH — Token from OAuth flow
+// ══════════════════════════════════════════════════
+async function getSfToken() {
+  const c = getSfConfig();
+  if (!c.instanceUrl || !c.clientId) {
+    openSfConfig();
+    throw new Error('Salesforce not configured');
+  }
+  if (c.accessToken) return { token: c.accessToken, instanceUrl: c.instanceUrl };
+  // No token — trigger login
+  openSfConfig();
+  throw new Error('Not authenticated — please login with Salesforce');
+}
+
+// ══════════════════════════════════════════════════
+// READ FROM SALESFORCE
+// ══════════════════════════════════════════════════
+async function fetchFromSalesforce() {
+  const { token, instanceUrl } = await getSfToken();
+  const soql = `SELECT Id, Name, Amount, StageName, CloseDate, AccountId, Account.Name, ExpectedRevenue, of_Hours__c, SME_s__c, LeadSource, Type, Description FROM Opportunity WHERE OwnerId != null ORDER BY LastModifiedDate DESC LIMIT 50`;
+  const url = `${instanceUrl}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
+  if (res.status === 401) { sessionStorage.removeItem('sf_access_token'); throw new Error('Token expired — retrying'); }
+  if (!res.ok) throw new Error(`Salesforce query failed: ${res.status}`);
+  const data = await res.json();
+  return data.records.map(mapSfToProject);
+}
+
+function mapSfToProject(r) {
+  const stageMap = {
+    'Qualify': 'Scoping', 'Meet & Present': 'Proposal', 'Propose': 'Proposal',
+    'Negotiate': 'Proposal', 'Closed Won': 'Active', 'Closed Lost': 'Closed',
+    'Value Proposition': 'Proposal', 'Id. Decision Makers': 'Scoping',
+    'Perception Analysis': 'Scoping', 'Needs Analysis': 'Scoping',
+  };
+  const colorMap = { 'Active': '#1DA462', 'Proposal': '#2E75B6', 'Scoping': '#C47F0A', 'Closed': '#888' };
+  const status = stageMap[r.StageName] || 'Proposal';
+  const clientName = r['Account.Name'] || r.Account?.Name || r.Name;
+  return {
+    id: r.Id,
+    sfId: r.Id,
+    name: clientName,
+    oppName: r.Name,
+    status,
+    stage: r.StageName,
+    amount: r.Amount || 0,
+    hours: r.of_Hours__c || '—',
+    smes: r.SME_s__c || '—',
+    closeDate: r.CloseDate || '',
+    expectedRevenue: r.ExpectedRevenue || 0,
+    employees: parseInt(r.Description?.match(/(\d[\d,]+)\s*emp/i)?.[1]?.replace(',','')) || 0,
+    modules: r.Description || '—',
+    color: colorMap[status] || '#2E75B6',
+    synced: true,
+  };
+}
+
+// ══════════════════════════════════════════════════
+// WRITE TO SALESFORCE
+// ══════════════════════════════════════════════════
+async function pushToSalesforce(proj) {
+  const { token, instanceUrl } = await getSfToken();
+  const c = getSfConfig();
+
+  // Find or create Account
+  let accountId = null;
+  try {
+    const acctRes = await fetch(`${instanceUrl}/services/data/v59.0/query?q=${encodeURIComponent(`SELECT Id FROM Account WHERE Name = '${proj.name.replace(/'/g,"\\'")}' LIMIT 1`)}`,
+      { headers: { Authorization: `Bearer ${token}` } });
+    const acctData = await acctRes.json();
+    if (acctData.records?.length) {
+      accountId = acctData.records[0].Id;
+    } else {
+      const newAcct = await fetch(`${instanceUrl}/services/data/v59.0/sobjects/Account`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Name: proj.name, Type: 'Prospect', LeadSource: 'Partner' }),
+      });
+      const acctJson = await newAcct.json();
+      accountId = acctJson.id;
+    }
+  } catch(e) { console.warn('Account lookup failed', e); }
+
+  const oppBody = {
+    Name: `${proj.name} - $${Number(proj.amount).toLocaleString()} - ${proj.closeDate || new Date(Date.now()+31536e6).toISOString().split('T')[0]}`,
+    AccountId: accountId,
+    Amount: proj.amount || 0,
+    StageName: proj.stage || 'Meet & Present',
+    CloseDate: proj.closeDate || new Date(Date.now()+31536e6).toISOString().split('T')[0],
+    ExpectedRevenue: proj.expectedRevenue || proj.amount || 0,
+    LeadSource: 'Partner',
+    Type: 'New Business',
+    of_Hours__c: String(proj.hours || ''),
+    SME_s__c: String(proj.smes || ''),
+    Description: `Employees: ${proj.employees || ''}\nModules: ${proj.modules || ''}\nGo-Live: ${proj.golive || ''}\nBill Rate: $${proj.rate || 135}/hr\nStatus: ${proj.status}`,
+  };
+
+  const method = proj.sfId ? 'PATCH' : 'POST';
+  const endpoint = proj.sfId
+    ? `${instanceUrl}/services/data/v59.0/sobjects/Opportunity/${proj.sfId}`
+    : `${instanceUrl}/services/data/v59.0/sobjects/Opportunity`;
+
+  const res = await fetch(endpoint, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(oppBody),
+  });
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json();
+    throw new Error(err[0]?.message || `Salesforce write failed: ${res.status}`);
+  }
+  if (method === 'POST') {
+    const json = await res.json();
+    return json.id;
+  }
+  return proj.sfId;
+}
+
+// ══════════════════════════════════════════════════
+// LOCAL FALLBACK DATA (shown before first SF sync)
+// ══════════════════════════════════════════════════
+const FALLBACK_PROJECTS = [
+  {
+    id:'local-1', name:'VASA Fitness', status:'Active',
+    stage:'Closed Won', amount:825000, hours:5773, smes:'',
+    closeDate:'2027-07-01', employees:5700,
+    modules:'Core HCM, Payroll, Time & Attendance, Benefits, Recruiting, Onboarding, Advanced Scheduling, Talent Suite',
+    golive:'April 1, 2027 (Phase 1) / July 1, 2027 (Phase 2)', rate:135,
+    color:'#1DA462', synced:false
+  },
+  {
+    id:'local-2', name:'Rush Enterprises', status:'Proposal',
+    stage:'Propose', amount:1200000, hours:8890, smes:'',
+    closeDate:'2026-09-30', employees:8000,
+    modules:'Core HCM, Payroll, Time & Attendance, Benefits, Recruiting, Talent Suite, Canadian Payroll',
+    golive:'TBD', rate:135, color:'#2E75B6', synced:false
+  },
+  {
+    id:'local-3', name:'Lindblad Expeditions', status:'Proposal',
+    stage:'Meet & Present', amount:387625, hours:3101, smes:'',
+    closeDate:'2026-10-01', employees:3101,
+    modules:'Core HCM, Payroll, Time & Attendance, Benefits, Recruiting, Onboarding',
+    golive:'TBD', rate:125, color:'#2E75B6', synced:false
+  },
+  {
+    id:'local-4', name:'KKR & Co.', status:'Scoping',
+    stage:'Qualify', amount:0, hours:0, smes:'',
+    closeDate:'2027-01-01', employees:4600,
+    modules:'Global Payroll (24 countries, 81 payrolls)',
+    golive:'January 1, 2028', rate:125, color:'#C47F0A', synced:false
+  },
+  {
+    id:'local-5', name:'Enviva LLC', status:'Closed',
+    stage:'Closed Lost', amount:349000, hours:2792, smes:'',
+    closeDate:'2026-01-01', employees:0,
+    modules:'Full Suite, Advanced Scheduling',
+    golive:'—', rate:135, color:'#888', synced:false
+  },
+];
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let PROJECTS = [...FALLBACK_PROJECTS];
+let currentFilter = 'all';
+let pipelineChartInst = null;
+let statusChartInst = null;
+
+// ══════════════════════════════════════════════════
+// SYNC
+// ══════════════════════════════════════════════════
+async function syncFromSalesforce() {
+  const c = getSfConfig();
+  if (!c.instanceUrl) { openSfConfig(); return; }
+  setLoading(true);
+  setSfStatus('connecting');
+  try {
+    const sfProjects = await fetchFromSalesforce();
+    if (sfProjects.length) {
+      // Merge: SF records take precedence, keep local-only records that have no sfId match
+      const sfIds = new Set(sfProjects.map(p => p.sfId));
+      const localOnly = PROJECTS.filter(p => !p.sfId && !sfIds.has(p.sfId));
+      PROJECTS = [...sfProjects, ...localOnly];
+      toast(`Synced ${sfProjects.length} opportunities from Salesforce`, 'success');
+    } else {
+      toast('No opportunities found in Salesforce — showing local data', 'info');
+    }
+    setSfStatus('connected');
+    document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
+  } catch(e) {
+    setSfStatus('error');
+    toast(`Sync failed: ${e.message}`, 'error');
+    console.error(e);
+  }
+  setLoading(false);
+  renderAll();
+}
+
+// ══════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════
+function setLoading(on) {
+  document.getElementById('loadingBar').style.display = on ? 'block' : 'none';
+}
+function setSfStatus(s) {
+  const dot = document.getElementById('sfDot');
+  const label = document.getElementById('sfStatusLabel');
+  dot.className = 'sf-dot';
+  if (s === 'connected') { dot.classList.add('connected'); label.textContent = 'Salesforce connected'; }
+  else if (s === 'error') { dot.classList.add('error'); label.textContent = 'Connection error'; }
+  else if (s === 'connecting') { label.textContent = 'Connecting...'; }
+  else { label.textContent = 'Not connected'; }
+}
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+function openScopingTool() {
+  const pin = prompt('Enter PIN to access Scoping Assistant:');
+  if (pin === '9205') {
+    window.open('pts_scoping_tool.html', '_blank');
+  } else if (pin !== null) {
+    toast('Incorrect PIN', 'error');
+  }
+}
+
+function toggleTheme() {
+  const d = document.documentElement;
+  d.setAttribute('data-theme', d.getAttribute('data-theme')==='dark' ? '' : 'dark');
+}
+
+// ══════════════════════════════════════════════════
+// FILTER & VIEWS
+// ══════════════════════════════════════════════════
+function setView(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { all:'All Projects', Active:'Active Engagements', Proposal:'Proposals', Scoping:'Scoping', Closed:'Closed' };
+  document.getElementById('viewTitle').textContent = titles[filter] || 'Projects';
+  renderProjects();
+  renderFilterTabs();
+}
+
+function renderFilterTabs() {
+  const counts = {};
+  PROJECTS.forEach(p => { counts[p.status] = (counts[p.status]||0)+1; });
+  const row = document.getElementById('filterRow');
+  const filters = [['all','All',PROJECTS.length],['Active','Active',counts.Active||0],['Proposal','Proposals',counts.Proposal||0],['Scoping','Scoping',counts.Scoping||0],['Closed','Closed',counts.Closed||0]];
+  row.innerHTML = filters.map(([val,label,cnt]) =>
+    `<div class="filter-tab ${currentFilter===val?'active':''}" onclick="currentFilter='${val}';renderProjects();document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));this.classList.add('active');">${label} <span style="opacity:0.6">${cnt}</span></div>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════
+// KPIs
+// ══════════════════════════════════════════════════
+function renderKPIs() {
+  const active = PROJECTS.filter(p=>p.status==='Active');
+  const props = PROJECTS.filter(p=>p.status==='Proposal');
+  const pipeline = [...active,...props].reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const totalEmp = PROJECTS.filter(p=>p.status!=='Closed').reduce((s,p)=>s+(Number(p.employees)||0),0);
+  document.getElementById('kpi-pipeline').textContent = '$'+Math.round(pipeline/1000)+'K';
+  document.getElementById('kpi-pipeline-sub').textContent = `${active.length} active · ${props.length} proposals`;
+  document.getElementById('kpi-active').textContent = active.length;
+  document.getElementById('kpi-proposals').textContent = props.length;
+  document.getElementById('kpi-employees').textContent = totalEmp.toLocaleString();
+}
+
+// ══════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════
+function renderCharts() {
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const textColor = isDark ? '#8A95A3' : '#4A5568';
+  Chart.defaults.color = textColor;
+
+  // Pipeline bar
+  const pCtx = document.getElementById('pipelineChart').getContext('2d');
+  const pProjects = PROJECTS.filter(p=>p.amount>0).sort((a,b)=>b.amount-a.amount).slice(0,6);
+  if (pipelineChartInst) pipelineChartInst.destroy();
+  pipelineChartInst = new Chart(pCtx, {
+    type:'bar',
+    data:{
+      labels: pProjects.map(p=>p.name),
+      datasets:[{data:pProjects.map(p=>p.amount), backgroundColor:pProjects.map(p=>p.color+'cc'), borderRadius:4, borderSkipped:false}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11}}},
+        y:{grid:{color:isDark?'#2A3545':'#E4E6EC'},ticks:{font:{size:11},callback:v=>'$'+Math.round(v/1000)+'K'}}
+      }
+    }
+  });
+
+  // Status doughnut
+  const sCtx = document.getElementById('statusChart').getContext('2d');
+  const statusCounts = {};
+  PROJECTS.forEach(p=>{ statusCounts[p.status]=(statusCounts[p.status]||0)+1; });
+  const colors = {Active:'#1DA462',Proposal:'#2E75B6',Scoping:'#C47F0A',Closed:'#8A95A3'};
+  if (statusChartInst) statusChartInst.destroy();
+  statusChartInst = new Chart(sCtx, {
+    type:'doughnut',
+    data:{
+      labels:Object.keys(statusCounts),
+      datasets:[{data:Object.values(statusCounts),backgroundColor:Object.keys(statusCounts).map(k=>colors[k]||'#888'),borderWidth:0,hoverOffset:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'right',labels:{font:{size:12},boxWidth:12}}}}
+  });
+}
+
+// ══════════════════════════════════════════════════
+// PROJECT LIST
+// ══════════════════════════════════════════════════
+function renderProjects() {
+  const filtered = currentFilter==='all' ? PROJECTS : PROJECTS.filter(p=>p.status===currentFilter);
+  const list = document.getElementById('projectList');
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No projects in this view.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((p,i) => {
+    const badgeClass = {Active:'badge-active',Proposal:'badge-proposal',Scoping:'badge-scoping',Closed:'badge-closed'}[p.status]||'badge-proposal';
+    const sfBadge = p.synced
+      ? `<span class="sf-badge synced"><span class="dot"></span>Salesforce</span>`
+      : `<span class="sf-badge"><span class="dot"></span>Local</span>`;
+    const amt = p.amount ? '$'+Number(p.amount).toLocaleString() : '—';
+    return `
+    <div class="project-card">
+      <div class="project-header" onclick="toggleDrawer('drawer-${i}','chev-${i}')">
+        <div class="proj-dot" style="background:${p.color}"></div>
+        <div class="proj-name">${p.name}</div>
+        <div class="proj-meta">
+          ${sfBadge}
+          <span class="proj-amount">${amt}</span>
+          <span class="status-badge ${badgeClass}">${p.status}</span>
+          <span class="chevron" id="chev-${i}">⌄</span>
+        </div>
+      </div>
+      <div class="project-drawer" id="drawer-${i}">
+        <!-- VIEW MODE -->
+        <div id="view-${p.id}">
+          <div class="drawer-grid">
+            <div class="drawer-field"><label>Stage</label><span>${p.stage||p.status}</span></div>
+            <div class="drawer-field"><label>Amount</label><span class="mono">${amt}</span></div>
+            <div class="drawer-field"><label># Hours</label><span class="mono">${p.hours||'—'}</span></div>
+            <div class="drawer-field"><label>Employees</label><span>${p.employees?Number(p.employees).toLocaleString():'—'}</span></div>
+            <div class="drawer-field"><label>Close Date</label><span>${p.closeDate||'—'}</span></div>
+            <div class="drawer-field"><label>Bill Rate</label><span class="mono">$${p.rate||135}/hr</span></div>
+            <div class="drawer-field" style="grid-column:1/-1"><label>Modules</label><span>${p.modules||'—'}</span></div>
+            <div class="drawer-field"><label>Go-Live</label><span>${p.golive||'—'}</span></div>
+            ${p.sfId ? `<div class="drawer-field"><label>Salesforce ID</label><span class="mono" style="font-size:11px">${p.sfId}</span></div>` : ''}
+          </div>
+          <div class="drawer-actions">
+            <button class="btn btn-secondary btn-sm" onclick="pushSingleToSf('${p.id}')">↑ Push to Salesforce</button>
+            ${p.sfId
+              ? `<button class="btn btn-secondary btn-sm" onclick="openInSalesforce('${p.sfId}')">Open in Salesforce ↗</button>`
+              : `<button class="btn btn-secondary btn-sm" onclick="openSalesforceList('${p.name}')">View Salesforce Pipeline ↗</button>`}
+            <button class="btn btn-primary btn-sm" onclick="enterEditMode('${p.id}')">✎ Edit</button>
+          </div>
+        </div>
+        <!-- EDIT MODE (hidden by default) -->
+        <div id="edit-${p.id}" style="display:none">
+          <div class="edit-banner">✎ Editing — changes will sync to Salesforce on save.</div>
+          <div class="edit-grid">
+            <div class="edit-field full">
+              <label>Client Name</label>
+              <input type="text" id="e_name_${p.id}" value="${p.name}">
+            </div>
+            <div class="edit-field">
+              <label>Status</label>
+              <select id="e_status_${p.id}">
+                <option ${p.status==='Proposal'?'selected':''}>Proposal</option>
+                <option ${p.status==='Scoping'?'selected':''}>Scoping</option>
+                <option ${p.status==='Active'?'selected':''}>Active</option>
+                <option ${p.status==='Closed'?'selected':''}>Closed</option>
+              </select>
+            </div>
+            <div class="edit-field">
+              <label>Stage</label>
+              <select id="e_stage_${p.id}">
+                <option ${p.stage==='Qualify'?'selected':''}>Qualify</option>
+                <option ${p.stage==='Meet & Present'?'selected':''}>Meet &amp; Present</option>
+                <option ${p.stage==='Propose'?'selected':''}>Propose</option>
+                <option ${p.stage==='Negotiate'?'selected':''}>Negotiate</option>
+                <option ${p.stage==='Closed Won'?'selected':''}>Closed Won</option>
+                <option ${p.stage==='Closed Lost'?'selected':''}>Closed Lost</option>
+              </select>
+            </div>
+            <div class="edit-field">
+              <label>Amount ($)</label>
+              <input type="number" id="e_amount_${p.id}" value="${p.amount||''}">
+            </div>
+            <div class="edit-field">
+              <label># Hours</label>
+              <input type="text" id="e_hours_${p.id}" value="${p.hours||''}">
+            </div>
+            <div class="edit-field">
+              <label>Employees</label>
+              <input type="number" id="e_employees_${p.id}" value="${p.employees||''}">
+            </div>
+            <div class="edit-field">
+              <label>Close Date</label>
+              <input type="date" id="e_closedate_${p.id}" value="${p.closeDate||''}">
+            </div>
+            <div class="edit-field">
+              <label>Bill Rate ($/hr)</label>
+              <input type="number" id="e_rate_${p.id}" value="${p.rate||135}">
+            </div>
+            <div class="edit-field">
+              <label>Go-Live</label>
+              <input type="text" id="e_golive_${p.id}" value="${p.golive||''}">
+            </div>
+            <div class="edit-field full">
+              <label>Modules</label>
+              <input type="text" id="e_modules_${p.id}" value="${p.modules||''}">
+            </div>
+          </div>
+          <div class="edit-actions">
+            <button class="btn btn-gold btn-sm" id="save-btn-${p.id}" onclick="saveEdit('${p.id}')">↑ Save &amp; Sync to Salesforce</button>
+            <button class="btn btn-secondary btn-sm" onclick="cancelEdit('${p.id}')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDrawer(id, chevId) {
+  document.getElementById(id).classList.toggle('open');
+  const chev = document.getElementById(chevId);
+  chev.classList.toggle('open');
+}
+
+function openInSalesforce(sfId) {
+  const c = getSfConfig();
+  if (!c.instanceUrl) { toast('Configure Salesforce first', 'error'); return; }
+  window.open(`${c.instanceUrl}/lightning/r/Opportunity/${sfId}/view`, '_blank');
+}
+
+function openSalesforceList(name) {
+  const c = getSfConfig();
+  if (!c.instanceUrl) { openSfConfig(); return; }
+  // Deep link to Opportunities list — after pushing, the record will be there
+  window.open(`${c.instanceUrl}/lightning/o/Opportunity/list?filterName=Recent`, '_blank');
+}
+
+// ══════════════════════════════════════════════════
+// NEW ENGAGEMENT MODAL
+// ══════════════════════════════════════════════════
+function openNewEng() {
+  // Set default close date to 90 days out
+  const d = new Date(); d.setDate(d.getDate()+90);
+  document.getElementById('f_closedate').value = d.toISOString().split('T')[0];
+  document.getElementById('newEngModal').classList.add('open');
+}
+function closeNewEng() { document.getElementById('newEngModal').classList.remove('open'); }
+
+async function saveEngagement() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { toast('Client name is required', 'error'); return; }
+
+  const proj = {
+    id: 'local-'+Date.now(),
+    name,
+    status: document.getElementById('f_status').value,
+    stage: document.getElementById('f_stage').value,
+    amount: Number(document.getElementById('f_amount').value)||0,
+    hours: document.getElementById('f_hours').value,
+    employees: Number(document.getElementById('f_employees').value)||0,
+    closeDate: document.getElementById('f_closedate').value,
+    modules: document.getElementById('f_modules').value,
+    golive: document.getElementById('f_golive').value,
+    rate: Number(document.getElementById('f_rate').value)||135,
+    smes: '',
+    color: {Active:'#1DA462',Proposal:'#2E75B6',Scoping:'#C47F0A',Closed:'#888'}[document.getElementById('f_status').value]||'#2E75B6',
+    synced: false,
+  };
+
+  // Push to Salesforce
+  const btn = document.getElementById('saveEngBtn');
+  const btnText = document.getElementById('saveBtnText');
+  btnText.innerHTML = '<span class="spinner"></span> Saving...';
+  btn.disabled = true;
+
+  const c = getSfConfig();
+  if (c.instanceUrl) {
+    try {
+      const sfId = await pushToSalesforce(proj);
+      proj.sfId = sfId;
+      proj.synced = true;
+      toast(`"${name}" created in Salesforce ✓`, 'success');
+    } catch(e) {
+      toast(`Saved locally. Salesforce push failed: ${e.message}`, 'error');
+    }
+  } else {
+    toast(`"${name}" saved locally. Configure Salesforce to sync.`, 'info');
+  }
+
+  PROJECTS.unshift(proj);
+  btnText.textContent = 'Save & Push to Salesforce';
+  btn.disabled = false;
+  closeNewEng();
+  renderAll();
+}
+
+async function pushSingleToSf(id) {
+  const proj = PROJECTS.find(p=>p.id===id);
+  if (!proj) return;
+  const c = getSfConfig();
+  if (!c.instanceUrl) { openSfConfig(); return; }
+  try {
+    setLoading(true);
+    const sfId = await pushToSalesforce(proj);
+    proj.sfId = sfId;
+    proj.synced = true;
+    toast(`"${proj.name}" synced to Salesforce ✓`, 'success');
+  } catch(e) {
+    toast(`Push failed: ${e.message}`, 'error');
+  }
+  setLoading(false);
+  renderProjects();
+}
+
+function enterEditMode(id) {
+  document.getElementById('view-'+id).style.display = 'none';
+  document.getElementById('edit-'+id).style.display = 'block';
+}
+
+function cancelEdit(id) {
+  document.getElementById('edit-'+id).style.display = 'none';
+  document.getElementById('view-'+id).style.display = 'block';
+}
+
+async function saveEdit(id) {
+  const proj = PROJECTS.find(p => p.id === id);
+  if (!proj) return;
+
+  // Read updated values from edit fields
+  proj.name       = document.getElementById('e_name_'+id).value.trim() || proj.name;
+  proj.status     = document.getElementById('e_status_'+id).value;
+  proj.stage      = document.getElementById('e_stage_'+id).value;
+  proj.amount     = Number(document.getElementById('e_amount_'+id).value) || 0;
+  proj.hours      = document.getElementById('e_hours_'+id).value;
+  proj.employees  = Number(document.getElementById('e_employees_'+id).value) || 0;
+  proj.closeDate  = document.getElementById('e_closedate_'+id).value;
+  proj.rate       = Number(document.getElementById('e_rate_'+id).value) || 135;
+  proj.golive     = document.getElementById('e_golive_'+id).value;
+  proj.modules    = document.getElementById('e_modules_'+id).value;
+  proj.color      = {Active:'#1DA462',Proposal:'#2E75B6',Scoping:'#C47F0A',Closed:'#888'}[proj.status] || '#2E75B6';
+
+  // Push to Salesforce
+  const btn = document.getElementById('save-btn-'+id);
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+  btn.disabled = true;
+
+  const c = getSfConfig();
+  if (c.instanceUrl) {
+    try {
+      setLoading(true);
+      const sfId = await pushToSalesforce(proj);
+      proj.sfId = sfId;
+      proj.synced = true;
+      toast(`"${proj.name}" updated in Salesforce ✓`, 'success');
+    } catch(e) {
+      proj.synced = false;
+      toast(`Saved locally. Salesforce push failed: ${e.message}`, 'error');
+    }
+    setLoading(false);
+  } else {
+    toast(`"${proj.name}" updated locally. Configure Salesforce to sync.`, 'info');
+  }
+
+  btn.innerHTML = '↑ Save & Sync to Salesforce';
+  btn.disabled = false;
+  renderAll();
+}
+
+// ══════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════
+function renderAll() {
+  renderKPIs();
+  renderCharts();
+  renderFilterTabs();
+  renderProjects();
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  renderAll();
+  const c = getSfConfig();
+  if (c.instanceUrl) {
+    setSfStatus('connecting');
+    syncFromSalesforce();
+  }
+});
+</script>
+</body>
+</html>
